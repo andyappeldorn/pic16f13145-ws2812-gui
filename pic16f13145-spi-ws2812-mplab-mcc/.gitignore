@@ -1,0 +1,19 @@
+# Untracked files in MPLABX projects
+/**/build/*
+/**/nbproject/*
+!/**/nbproject/*.xml
+/**/dist/*
+/**/.generated_files/*
+
+.generated_files/
+build/
+dist/
+nbproject/
+Makefile*
+Package-*
+private/
+_build/
+!cmake/**/user.cmake
+cmake/**/.generated/*
+cmake/**/CMake*
+out/
