@@ -118,7 +118,7 @@ class RgbEditorDialog(tk.Toplevel):
 
     def _pick_color(self) -> None:
         init = rgb_to_hex(*self._rgb())
-        triple, _hex = colorchooser.askcolor(colorinit=init, parent=self)
+        triple, _hex = colorchooser.askcolor(color=init, parent=self)
         if triple is None:
             return
         r, g, b = (int(round(x)) for x in triple)
@@ -150,6 +150,7 @@ class LedControlApp(tk.Tk):
         self._rx_queue: queue.Queue[str] = queue.Queue()
 
         self._led_rgb: list[tuple[int, int, int]] = [(32, 32, 32)] * NUMBER_OF_LEDS
+        self._intensity = tk.IntVar(value=100)
         self._led_hit: list[
             tuple[float, float, float]
         ] = []  # cx, cy, radius — canvas coords
@@ -216,6 +217,20 @@ class LedControlApp(tk.Tk):
         ttk.Button(actions, text="Send U (refresh)", command=self._send_refresh).pack(
             side=tk.LEFT
         )
+
+        dim_frame = ttk.Frame(self, padding=(8, 6))
+        dim_frame.pack(fill=tk.X)
+        ttk.Label(dim_frame, text="Intensity").pack(side=tk.LEFT)
+        self._intensity_label = ttk.Label(dim_frame, text="100%", width=5)
+        self._intensity_label.pack(side=tk.RIGHT)
+        ttk.Scale(
+            dim_frame,
+            from_=0,
+            to=100,
+            orient=tk.HORIZONTAL,
+            variable=self._intensity,
+            command=self._on_intensity_change,
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 8))
 
         log_fr = ttk.LabelFrame(self, text="Serial (RX)", padding=8)
         log_fr.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
@@ -379,7 +394,7 @@ class LedControlApp(tk.Tk):
             ly = cy - ring_r * math.sin(theta)
             self._led_hit.append((lx, ly, led_radius))
 
-            r, g, b = self._led_rgb[i]
+            r, g, b = self._dimmed_rgb(*self._led_rgb[i])
             fill = rgb_to_hex(r, g, b)
             self._canvas.create_oval(
                 lx - led_radius,
@@ -429,7 +444,8 @@ class LedControlApp(tk.Tk):
         r, g, b = dlg._result
         self._led_rgb[idx] = (r, g, b)
         self._draw_led_strip()
-        self._send_line(f"L{idx} {r} {g} {b}")
+        dr, dg, db = self._dimmed_rgb(r, g, b)
+        self._send_line(f"L{idx} {dr} {dg} {db}")
 
     def _edit_all(self) -> None:
         dlg = RgbEditorDialog(
@@ -442,7 +458,8 @@ class LedControlApp(tk.Tk):
         r, g, b = dlg._result
         self._led_rgb = [(r, g, b)] * NUMBER_OF_LEDS
         self._draw_led_strip()
-        self._send_line(f"A {r} {g} {b}")
+        dr, dg, db = self._dimmed_rgb(r, g, b)
+        self._send_line(f"A {dr} {dg} {db}")
 
     def _send_clear(self) -> None:
         if not self._send_line("C"):
@@ -452,6 +469,20 @@ class LedControlApp(tk.Tk):
 
     def _send_refresh(self) -> None:
         self._send_line("U")
+
+    def _dimmed_rgb(self, r: int, g: int, b: int) -> tuple[int, int, int]:
+        scale = self._intensity.get() / 100.0
+        return (int(r * scale), int(g * scale), int(b * scale))
+
+    def _on_intensity_change(self, _val: str) -> None:
+        pct = self._intensity.get()
+        self._intensity_label.configure(text=f"{pct}%")
+        self._draw_led_strip()
+        if self._ser is None or not self._ser.is_open:
+            return
+        for i, (r, g, b) in enumerate(self._led_rgb):
+            dr, dg, db = self._dimmed_rgb(r, g, b)
+            self._send_line(f"L{i} {dr} {dg} {db}")
 
     def _on_close(self) -> None:
         self._disconnect()
