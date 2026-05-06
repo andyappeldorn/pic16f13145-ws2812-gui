@@ -13,7 +13,7 @@
 */
 
 /*
-© [2026] Microchip Technology Inc. and its subsidiaries.
+ï¿½ [2026] Microchip Technology Inc. and its subsidiaries.
 
     Subject to your compliance with these terms, you may use Microchip 
     software and any derivatives exclusively with Microchip products. 
@@ -33,74 +33,30 @@
     THIS SOFTWARE.
 */
 #include "mcc_generated_files/system/system.h"
-#include "image.h"
-
-/*
-    Main application
-*/
-
-#define NUMBER_OF_ROWS        8
-#define NUMBER_OF_COLUMNS     32
-#define NUMBER_OF_LEDS        ( NUMBER_OF_ROWS*NUMBER_OF_COLUMNS )
-#define RGB_IMAGE_SIZE        ( NUMBER_OF_LEDS * 3 )
-
-typedef struct
-{
-    uint8_t greenChannel;
-    uint8_t redChannel;
-    uint8_t blueChannel;
-} color_t; 
-
-
-static void WriteLEDsString(color_t const * const frame) 
-{
-    SPI1_Open(MSSP1_DEFAULT); 
-    SPI1_BufferWrite(frame, RGB_IMAGE_SIZE);
-    SPI1_Close(); 
-}
+#include "led_protocol.h"
 
 int main(void)
 {
-
     SYSTEM_Initialize();
+    LED_Protocol_Init();
 
-    // If using interrupts in PIC18 High/Low Priority Mode you need to enable the Global High and Low Interrupts 
-    // If using interrupts in PIC Mid-Range Compatibility Mode you need to enable the Global and Peripheral Interrupts 
-    // Use the following macros to: 
+    for (uint8_t i = 0; i < NUMBER_OF_LEDS; i++)
+    {
+        leds[i].green = 0x0D;
+        leds[i].red = 0x0D;
+        leds[i].blue = 0x0D;
+    }
 
-    // Enable the Global Interrupts 
-    //INTERRUPT_GlobalInterruptEnable(); 
+    CLBSWINLbits.CLBSWIN0 = 1;
+    LED_Protocol_UpdateLEDs();
 
-    // Disable the Global Interrupts 
-    //INTERRUPT_GlobalInterruptDisable(); 
+    INTERRUPT_PeripheralInterruptEnable();
+    INTERRUPT_GlobalInterruptEnable();
 
-    // Enable the Peripheral Interrupts 
-    //INTERRUPT_PeripheralInterruptEnable(); 
-
-    // Disable the Peripheral Interrupts 
-    //INTERRUPT_PeripheralInterruptDisable(); 
-    
+    LED_Protocol_PrintStartupBanner();
 
     while(1)
     {
-        CLBSWINLbits.CLBSWIN0 = 0; // DEMUX out0, SPI routed to PPSOUT pins
-        __delay_ms(100);
-        
-        WriteLEDsString(imageR);
-        __delay_ms(100);
-        
-        WriteLEDsString(imageG);
-        __delay_ms(100);
-        
-
-        CLBSWINLbits.CLBSWIN0 = 1; // DEMUX out1, SPI routed to SPI_to_WS2812 CLB circuit
-        __delay_ms(100);
-        
-        WriteLEDsString(imageR);
-        __delay_ms(1000);
-        
-        WriteLEDsString(imageG);
-        __delay_ms(1000);
-
-    }    
+        LED_Protocol_ProcessRxData();
+    }
 }
