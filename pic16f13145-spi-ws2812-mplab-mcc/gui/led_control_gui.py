@@ -3,10 +3,11 @@
 Tkinter control panel for the PIC16 WS2812 UART firmware.
 
 Commands sent match led_protocol.c (line-terminated with CR+LF):
-  L<n> R G B  — single LED
-  A R G B     — all LEDs
-  C           — clear
-  U           — refresh strip
+  L<n> R G B [W]  — single LED
+  A R G B [W]     — all LEDs
+  C               — clear
+  U               — refresh strip
+  M <3|4>         — set mode: 3=RGB, 4=RGBW
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ except ImportError as exc:
         "Missing pyserial. From the gui folder, run scripts\\build.bat or scripts\\build.ps1."
     ) from exc
 
-NUMBER_OF_LEDS = 8
+DEFAULT_NUM_LEDS = 8
 DEFAULT_BAUD = 115200
 BAUD_CHOICES = (9600, 19200, 38400, 57600, 115200)
 
@@ -36,23 +37,27 @@ def rgb_to_hex(r: int, g: int, b: int) -> str:
 
 
 class RgbEditorDialog(tk.Toplevel):
-    """Modal popup to edit R,G,B (0–255). Returns (r, g, b) on OK or None on cancel."""
+    """Modal popup to edit R,G,B[,W] (0-255). Returns tuple on OK or None on cancel."""
 
     def __init__(
         self,
         master: tk.Widget,
         title: str,
-        initial: tuple[int, int, int] = (0, 0, 0),
+        initial: tuple[int, ...] = (0, 0, 0),
+        rgbw_mode: bool = False,
     ) -> None:
         super().__init__(master)
         self.title(title)
         self.resizable(False, False)
-        self._result: tuple[int, int, int] | None = None
+        self._result: tuple[int, ...] | None = None
+        self._rgbw_mode = rgbw_mode
 
-        r0, g0, b0 = initial
+        r0, g0, b0 = initial[0], initial[1], initial[2]
+        w0 = initial[3] if len(initial) > 3 else 0
         self._var_r = tk.IntVar(value=r0)
         self._var_g = tk.IntVar(value=g0)
         self._var_b = tk.IntVar(value=b0)
+        self._var_w = tk.IntVar(value=w0)
 
         body = ttk.Frame(self, padding=12)
         body.grid(row=0, column=0, sticky="nsew")
@@ -87,8 +92,13 @@ class RgbEditorDialog(tk.Toplevel):
         mk_row(2, "Green", self._var_g)
         mk_row(3, "Blue", self._var_b)
 
+        next_row = 4
+        if self._rgbw_mode:
+            mk_row(4, "White", self._var_w)
+            next_row = 5
+
         ttk.Button(body, text="Color picker…", command=self._pick_color).grid(
-            row=4, column=0, columnspan=3, pady=(10, 0), sticky="w"
+            row=next_row, column=0, columnspan=3, pady=(10, 0), sticky="w"
         )
 
         buttons = ttk.Frame(self, padding=(12, 0, 12, 12))
@@ -105,19 +115,31 @@ class RgbEditorDialog(tk.Toplevel):
         self._refresh_preview()
         self.wait_window(self)
 
-    def _rgb(self) -> tuple[int, int, int]:
-        return (
-            max(0, min(255, self._var_r.get())),
-            max(0, min(255, self._var_g.get())),
-            max(0, min(255, self._var_b.get())),
-        )
+    def _color(self) -> tuple[int, ...]:
+        r = max(0, min(255, self._var_r.get()))
+        g = max(0, min(255, self._var_g.get()))
+        b = max(0, min(255, self._var_b.get()))
+        if self._rgbw_mode:
+            w = max(0, min(255, self._var_w.get()))
+            return (r, g, b, w)
+        return (r, g, b)
 
     def _refresh_preview(self, *_args: object) -> None:
-        r, g, b = self._rgb()
+        r = max(0, min(255, self._var_r.get()))
+        g = max(0, min(255, self._var_g.get()))
+        b = max(0, min(255, self._var_b.get()))
+        if self._rgbw_mode:
+            w = max(0, min(255, self._var_w.get()))
+            r = min(255, r + w)
+            g = min(255, g + w)
+            b = min(255, b + w)
         self._preview.configure(bg=rgb_to_hex(r, g, b))
 
     def _pick_color(self) -> None:
-        init = rgb_to_hex(*self._rgb())
+        r = max(0, min(255, self._var_r.get()))
+        g = max(0, min(255, self._var_g.get()))
+        b = max(0, min(255, self._var_b.get()))
+        init = rgb_to_hex(r, g, b)
         triple, _hex = colorchooser.askcolor(color=init, parent=self)
         if triple is None:
             return
@@ -128,7 +150,7 @@ class RgbEditorDialog(tk.Toplevel):
         self._refresh_preview()
 
     def _ok(self) -> None:
-        self._result = self._rgb()
+        self._result = self._color()
         self.grab_release()
         self.destroy()
 
@@ -142,18 +164,18 @@ class LedControlApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("WS2812 UART — LED control")
-        self.minsize(520, 420)
+        self.minsize(560, 480)
 
         self._ser: serial.Serial | None = None
         self._reader_stop = threading.Event()
         self._reader_thread: threading.Thread | None = None
         self._rx_queue: queue.Queue[str] = queue.Queue()
 
-        self._led_rgb: list[tuple[int, int, int]] = [(32, 32, 32)] * NUMBER_OF_LEDS
+        self._num_leds = DEFAULT_NUM_LEDS
+        self._rgbw_mode = False
+        self._led_colors: list[tuple[int, ...]] = [(32, 32, 32)] * self._num_leds
         self._intensity = tk.IntVar(value=100)
-        self._led_hit: list[
-            tuple[float, float, float]
-        ] = []  # cx, cy, radius — canvas coords
+        self._led_hit: list[tuple[float, float, float]] = []
 
         self._build_ui()
         self._poll_rx_queue()
@@ -189,9 +211,31 @@ class LedControlApp(tk.Tk):
 
         self._refresh_ports()
 
+        config_frame = ttk.LabelFrame(self, text="Configuration", padding=8)
+        config_frame.pack(fill=tk.X, padx=8, pady=(0, 8))
+
+        ttk.Label(config_frame, text="Number of LEDs:").pack(side=tk.LEFT)
+        self._num_leds_var = tk.IntVar(value=DEFAULT_NUM_LEDS)
+        self._num_leds_spin = ttk.Spinbox(
+            config_frame, from_=1, to=64, width=4, textvariable=self._num_leds_var
+        )
+        self._num_leds_spin.pack(side=tk.LEFT, padx=(4, 16))
+
+        self._mode_var = tk.StringVar(value="RGB")
+        ttk.Radiobutton(
+            config_frame, text="RGB (3-color)", variable=self._mode_var, value="RGB"
+        ).pack(side=tk.LEFT)
+        ttk.Radiobutton(
+            config_frame, text="RGBW (4-color)", variable=self._mode_var, value="RGBW"
+        ).pack(side=tk.LEFT, padx=(8, 0))
+
+        ttk.Button(config_frame, text="Apply", command=self._apply_config).pack(
+            side=tk.LEFT, padx=(16, 0)
+        )
+
         strip = ttk.LabelFrame(
             self,
-            text="LEDs in a circle — 0 at bottom, increasing counter-clockwise — click to set RGB",
+            text="LEDs in a circle — 0 at bottom, increasing counter-clockwise — click to set color",
             padding=8,
         )
         strip.pack(fill=tk.BOTH, expand=False, padx=8, pady=(0, 8))
@@ -243,12 +287,38 @@ class LedControlApp(tk.Tk):
 
         hint = ttk.Label(
             self,
-            text=(
-                "Tip: disable local echo in other terminals to avoid double characters."
-            ),
+            text="Tip: disable local echo in other terminals to avoid double characters.",
             foreground="#555",
         )
         hint.pack(pady=(0, 8))
+
+    def _apply_config(self) -> None:
+        new_count = max(1, min(64, self._num_leds_var.get()))
+        new_rgbw = self._mode_var.get() == "RGBW"
+
+        old = self._led_colors
+        converted: list[tuple[int, ...]] = []
+        for i in range(new_count):
+            if i < len(old):
+                c = old[i]
+                if new_rgbw:
+                    converted.append((c[0], c[1], c[2], c[3] if len(c) > 3 else 0))
+                else:
+                    converted.append((c[0], c[1], c[2]))
+            else:
+                if new_rgbw:
+                    converted.append((32, 32, 32, 0))
+                else:
+                    converted.append((32, 32, 32))
+
+        self._led_colors = converted
+        self._num_leds = new_count
+        self._rgbw_mode = new_rgbw
+
+        mode_val = 4 if new_rgbw else 3
+        self._send_line(f"M {mode_val}")
+
+        self._draw_led_strip()
 
     def _refresh_ports(self) -> None:
         ports = [p.device for p in serial.tools.list_ports.comports()]
@@ -358,13 +428,13 @@ class LedControlApp(tk.Tk):
         cy = h * 0.5
         short = max(min(w, h) - 2 * pad, 40)
 
+        n = float(self._num_leds)
         led_radius = max(10.0, min(26.0, short * 0.09))
         label_margin = led_radius + 14.0
-        # Keep LEDs separated on the ring: chord >= 2 * led_radius * margin
-        n = float(NUMBER_OF_LEDS)
+
         ring_min = (
             led_radius / max(math.sin(math.pi / n), 1e-6)
-            if NUMBER_OF_LEDS >= 2
+            if self._num_leds >= 2
             else led_radius
         )
         ring_ceiling = max(short * 0.5 - label_margin, ring_min)
@@ -382,20 +452,25 @@ class LedControlApp(tk.Tk):
             width=1,
         )
 
-        # LED 0 at bottom (θ = 3π/2). Decrease θ each step so index increases
-        # counter-clockwise as viewed on screen (same sense as a clock face from 6→5→4…).
         theta0 = 1.5 * math.pi
         step = (2.0 * math.pi) / n
 
         self._led_hit.clear()
-        for i in range(NUMBER_OF_LEDS):
+        for i in range(self._num_leds):
             theta = theta0 - step * i
             lx = cx + ring_r * math.cos(theta)
             ly = cy - ring_r * math.sin(theta)
             self._led_hit.append((lx, ly, led_radius))
 
-            r, g, b = self._dimmed_rgb(*self._led_rgb[i])
-            fill = rgb_to_hex(r, g, b)
+            color = self._led_colors[i]
+            r, g, b = color[0], color[1], color[2]
+            if len(color) > 3:
+                ww = color[3]
+                r = min(255, r + ww)
+                g = min(255, g + ww)
+                b = min(255, b + ww)
+            dr, dg, db = self._dimmed_color(r, g, b)
+            fill = rgb_to_hex(dr, dg, db)
             self._canvas.create_oval(
                 lx - led_radius,
                 ly - led_radius,
@@ -436,43 +511,52 @@ class LedControlApp(tk.Tk):
     def _edit_led(self, idx: int) -> None:
         dlg = RgbEditorDialog(
             self,
-            title=f"LED {idx} — RGB",
-            initial=self._led_rgb[idx],
+            title=f"LED {idx} — {'RGBW' if self._rgbw_mode else 'RGB'}",
+            initial=self._led_colors[idx],
+            rgbw_mode=self._rgbw_mode,
         )
         if dlg._result is None:
             return
-        r, g, b = dlg._result
-        self._led_rgb[idx] = (r, g, b)
+        self._led_colors[idx] = dlg._result
         self._draw_led_strip()
-        dr, dg, db = self._dimmed_rgb(r, g, b)
-        self._send_line(f"L{idx} {dr} {dg} {db}")
+        dimmed = self._dimmed_color(*dlg._result)
+        if self._rgbw_mode:
+            self._send_line(f"L{idx} {dimmed[0]} {dimmed[1]} {dimmed[2]} {dimmed[3]}")
+        else:
+            self._send_line(f"L{idx} {dimmed[0]} {dimmed[1]} {dimmed[2]}")
 
     def _edit_all(self) -> None:
         dlg = RgbEditorDialog(
             self,
-            title="All LEDs — RGB",
-            initial=self._led_rgb[0],
+            title=f"All LEDs — {'RGBW' if self._rgbw_mode else 'RGB'}",
+            initial=self._led_colors[0],
+            rgbw_mode=self._rgbw_mode,
         )
         if dlg._result is None:
             return
-        r, g, b = dlg._result
-        self._led_rgb = [(r, g, b)] * NUMBER_OF_LEDS
+        self._led_colors = [dlg._result] * self._num_leds
         self._draw_led_strip()
-        dr, dg, db = self._dimmed_rgb(r, g, b)
-        self._send_line(f"A {dr} {dg} {db}")
+        dimmed = self._dimmed_color(*dlg._result)
+        if self._rgbw_mode:
+            self._send_line(f"A {dimmed[0]} {dimmed[1]} {dimmed[2]} {dimmed[3]}")
+        else:
+            self._send_line(f"A {dimmed[0]} {dimmed[1]} {dimmed[2]}")
 
     def _send_clear(self) -> None:
         if not self._send_line("C"):
             return
-        self._led_rgb = [(0, 0, 0)] * NUMBER_OF_LEDS
+        if self._rgbw_mode:
+            self._led_colors = [(0, 0, 0, 0)] * self._num_leds
+        else:
+            self._led_colors = [(0, 0, 0)] * self._num_leds
         self._draw_led_strip()
 
     def _send_refresh(self) -> None:
         self._send_line("U")
 
-    def _dimmed_rgb(self, r: int, g: int, b: int) -> tuple[int, int, int]:
+    def _dimmed_color(self, *components: int) -> tuple[int, ...]:
         scale = self._intensity.get() / 100.0
-        return (int(r * scale), int(g * scale), int(b * scale))
+        return tuple(int(c * scale) for c in components)
 
     def _on_intensity_change(self, _val: str) -> None:
         pct = self._intensity.get()
@@ -480,9 +564,14 @@ class LedControlApp(tk.Tk):
         self._draw_led_strip()
         if self._ser is None or not self._ser.is_open:
             return
-        for i, (r, g, b) in enumerate(self._led_rgb):
-            dr, dg, db = self._dimmed_rgb(r, g, b)
-            self._send_line(f"L{i} {dr} {dg} {db}")
+        for i, color in enumerate(self._led_colors):
+            dimmed = self._dimmed_color(*color)
+            if self._rgbw_mode:
+                self._send_line(
+                    f"L{i} {dimmed[0]} {dimmed[1]} {dimmed[2]} {dimmed[3]}"
+                )
+            else:
+                self._send_line(f"L{i} {dimmed[0]} {dimmed[1]} {dimmed[2]}")
 
     def _on_close(self) -> None:
         self._disconnect()

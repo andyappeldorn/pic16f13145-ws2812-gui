@@ -5,7 +5,8 @@
 #include <string.h>
 #include <ctype.h>
 
-rgb_t leds[NUMBER_OF_LEDS];
+led_color_t leds[NUMBER_OF_LEDS];
+uint8_t led_mode = LED_MODE_RGB;
 
 static uint8_t cmd_buffer[64];
 static uint8_t cmd_index = 0;
@@ -37,12 +38,10 @@ static void tokenize_and_execute(void)
 {
     char *tokens[5];
     uint8_t token_count = 0;
-    uint8_t i = 0;
 
     cmd_buffer[cmd_index] = '\0';
 
     char *copy = (char *)cmd_buffer;
-    char *token = NULL;
 
     while (*copy && token_count < 5)
     {
@@ -77,13 +76,10 @@ static void tokenize_and_execute(void)
                 if (led_num >= NUMBER_OF_LEDS)
                     break;
 
-                uint8_t r = parse_uint8(tokens[1]);
-                uint8_t g = parse_uint8(tokens[2]);
-                uint8_t b = parse_uint8(tokens[3]);
-
-                leds[led_num].green = g;
-                leds[led_num].red = r;
-                leds[led_num].blue = b;
+                leds[led_num].red   = parse_uint8(tokens[1]);
+                leds[led_num].green = parse_uint8(tokens[2]);
+                leds[led_num].blue  = parse_uint8(tokens[3]);
+                leds[led_num].white = (token_count >= 5) ? parse_uint8(tokens[4]) : 0;
 
                 LED_Protocol_UpdateLEDs();
             }
@@ -96,12 +92,14 @@ static void tokenize_and_execute(void)
                 uint8_t r = parse_uint8(tokens[1]);
                 uint8_t g = parse_uint8(tokens[2]);
                 uint8_t b = parse_uint8(tokens[3]);
+                uint8_t w = (token_count >= 5) ? parse_uint8(tokens[4]) : 0;
 
                 for (uint8_t i = 0; i < NUMBER_OF_LEDS; i++)
                 {
+                    leds[i].red   = r;
                     leds[i].green = g;
-                    leds[i].red = r;
-                    leds[i].blue = b;
+                    leds[i].blue  = b;
+                    leds[i].white = w;
                 }
 
                 LED_Protocol_UpdateLEDs();
@@ -113,8 +111,9 @@ static void tokenize_and_execute(void)
             for (uint8_t i = 0; i < NUMBER_OF_LEDS; i++)
             {
                 leds[i].green = 0;
-                leds[i].red = 0;
-                leds[i].blue = 0;
+                leds[i].red   = 0;
+                leds[i].blue  = 0;
+                leds[i].white = 0;
             }
             LED_Protocol_UpdateLEDs();
             break;
@@ -122,6 +121,18 @@ static void tokenize_and_execute(void)
         case 'U':
         case 'u':
             LED_Protocol_UpdateLEDs();
+            break;
+
+        case 'M':
+        case 'm':
+            if (token_count >= 2)
+            {
+                uint8_t mode = parse_uint8(tokens[1]);
+                if (mode == LED_MODE_RGB || mode == LED_MODE_RGBW)
+                {
+                    led_mode = mode;
+                }
+            }
             break;
 
         default:
@@ -161,7 +172,16 @@ void LED_Protocol_ProcessRxData(void)
 void LED_Protocol_UpdateLEDs(void)
 {
     SPI1_Open(MSSP1_DEFAULT);
-    SPI1_BufferWrite((uint8_t *)leds, RGB_SIZE);
+    for (uint8_t i = 0; i < NUMBER_OF_LEDS; i++)
+    {
+        SPI1_ByteExchange(leds[i].green);
+        SPI1_ByteExchange(leds[i].red);
+        SPI1_ByteExchange(leds[i].blue);
+        if (led_mode == LED_MODE_RGBW)
+        {
+            SPI1_ByteExchange(leds[i].white);
+        }
+    }
     SPI1_Close();
 }
 
@@ -172,9 +192,10 @@ void LED_Protocol_PrintStartupBanner(void)
         "WS2812 UART demo ready.\r\n"
         "\r\n"
         "Commands (terminate each line with Enter):\r\n"
-        "  L<n> R G B   Set LED n (0-7) RGB\r\n"
-        "  A R G B      Set all LEDs\r\n"
-        "  C            Clear all (off)\r\n"
-        "  U            Push buffer to strip (usually automatic)\r\n"
+        "  L<n> R G B [W]  Set LED n RGB or RGBW\r\n"
+        "  A R G B [W]     Set all LEDs\r\n"
+        "  C               Clear all (off)\r\n"
+        "  U               Push buffer to strip\r\n"
+        "  M <3|4>         Set mode: 3=RGB, 4=RGBW\r\n"
         "\r\n");
 }

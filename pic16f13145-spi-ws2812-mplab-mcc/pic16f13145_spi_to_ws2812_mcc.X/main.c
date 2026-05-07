@@ -45,6 +45,7 @@ int main(void)
         leds[i].green = 0x0D;
         leds[i].red = 0x0D;
         leds[i].blue = 0x0D;
+        leds[i].white = 0x00;
     }
 
     CLBSWINLbits.CLBSWIN0 = 1;
