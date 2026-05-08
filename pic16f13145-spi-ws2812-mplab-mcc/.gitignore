@@ -1,19 +1,72 @@
 # Untracked files in MPLABX projects
-/**/build/*
-/**/nbproject/*
-!/**/nbproject/*.xml
-/**/dist/*
-/**/.generated_files/*
+#/**/build/*
+#/**/nbproject/*
+#!/**/nbproject/*.xml
+#/**/dist/*
+#/**/.generated_files/*
 
-.generated_files/
-build/
-dist/
-nbproject/
-Makefile*
-Package-*
-private/
+#.generated_files/
+#build/
+#dist/
+#nbproject/
+#Makefile*
+#Package-*
+#private/
+#_build/
+#!cmake/**/user.cmake
+#cmake/**/.generated/*
+#cmake/**/CMake*
+#out/
+
+#vs code
+.vscode/*.mplab-local.json
+.vscode/launch.json
+.vscode/settings.json
+*.mplab-local.json
+settings.json
+cmake/
 _build/
-!cmake/**/user.cmake
-cmake/**/.generated/*
-cmake/**/CMake*
 out/
+.specstory/
+.cursorindexingignore
+*.log
+
+# MCC System and Backup Files
+*.c.bak
+*.h.bak
+*.bak*
+*.mc3.bak*
+defmplabxtrace.log*
+**/queuelogs/
+
+# Intermediate Build Files
+*.d
+*.pre
+*.p1
+*.lst
+*.sym
+*.obj
+*.o
+*.sdb
+*.obj.dmp
+*.map
+
+# MPLAB X Build Directories
+[Dd]ebug/
+[Bb]uild/
+[Dd]ist/
+[Dd]isassembly/
+
+# MPLAB X directories - not needed for portability
+**/nbproject/private/
+**/.generated_files/
+**/nbproject/Makefile-*
+**/nbproject/Package-default.bash
+
+# NetBeans directories
+html/
+nbbuild/
+nbdist/
+nbactions.xml
+nb-configuration.xml
+funclist
