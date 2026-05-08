@@ -3,14 +3,11 @@
 
 #vs code
 .vscode/*.mplab-local.json
-#.vscode/launch.json
-#.vscode/settings.json
 *.mplab-local.json
 settings.json
 cmake/
 _build/
 out/
-.specstory/
 .cursorindexingignore
 *.log
 

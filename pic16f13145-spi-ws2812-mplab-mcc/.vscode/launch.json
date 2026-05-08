@@ -1,0 +1,19 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Note: Properties here can override MPLAB project settings
+      "name": "Launch pic16f13145_spi_to_ws2812_mcc: pro",
+      "type": "mplab-core-da",
+      "request": "launch",
+      "project": "pic16f13145_spi_to_ws2812_mcc",
+      "configuration": "pro",
+      "stopOnEntry": true,
+      "preLaunchTask": "pic16f13145_spi_to_ws2812_mcc: free - Build",
+      "program": "${workspaceFolder}/out/pic16f13145_spi_to_ws2812_mcc/pro.elf"
+    }
+  ]
+}
