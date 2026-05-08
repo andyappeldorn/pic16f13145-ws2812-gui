@@ -1,27 +1,10 @@
-# Untracked files in MPLABX projects
-#/**/build/*
-#/**/nbproject/*
-#!/**/nbproject/*.xml
-#/**/dist/*
-#/**/.generated_files/*
-
-#.generated_files/
-#build/
-#dist/
-#nbproject/
-#Makefile*
-#Package-*
-#private/
-#_build/
-#!cmake/**/user.cmake
-#cmake/**/.generated/*
-#cmake/**/CMake*
-#out/
+#gitignore vs code w/ mplab x project
+#includes python project
 
 #vs code
 .vscode/*.mplab-local.json
-.vscode/launch.json
-.vscode/settings.json
+#.vscode/launch.json
+#.vscode/settings.json
 *.mplab-local.json
 settings.json
 cmake/
@@ -31,6 +14,18 @@ out/
 .cursorindexingignore
 *.log
 
+# MPLAB X directories - not needed for portability
+**/nbproject/private/
+**/.generated_files/
+**/nbproject/Makefile-*
+**/nbproject/Package-default.bash
+
+# MPLAB X Build Directories
+[Dd]ebug/
+[Bb]uild/
+[Dd]ist/
+[Dd]isassembly/
+
 # MCC System and Backup Files
 *.c.bak
 *.h.bak
@@ -39,7 +34,7 @@ out/
 defmplabxtrace.log*
 **/queuelogs/
 
-# Intermediate Build Files
+# Compiler Intermediate Build Files
 *.d
 *.pre
 *.p1
@@ -50,18 +45,6 @@ defmplabxtrace.log*
 *.sdb
 *.obj.dmp
 *.map
-
-# MPLAB X Build Directories
-[Dd]ebug/
-[Bb]uild/
-[Dd]ist/
-[Dd]isassembly/
-
-# MPLAB X directories - not needed for portability
-**/nbproject/private/
-**/.generated_files/
-**/nbproject/Makefile-*
-**/nbproject/Package-default.bash
 
 # NetBeans directories
 html/
