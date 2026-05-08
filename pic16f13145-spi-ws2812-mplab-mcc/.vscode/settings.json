@@ -1,0 +1,9 @@
+{
+    "specstory.cloudSync.enabled": "never",
+    "memory-inspector.debugTypes": [
+        "arm-debugger",
+        "embedded-debug",
+        "gdb",
+        "mplab-core-da"
+    ]
+}
