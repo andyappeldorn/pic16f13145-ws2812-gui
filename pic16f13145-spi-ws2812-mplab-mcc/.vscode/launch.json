@@ -12,7 +12,7 @@
       "project": "pic16f13145_spi_to_ws2812_mcc",
       "configuration": "pro",
       "stopOnEntry": true,
-      "preLaunchTask": "pic16f13145_spi_to_ws2812_mcc: free - Build",
+      "preLaunchTask": "pic16f13145_spi_to_ws2812_mcc: pro - Build",
       "program": "${workspaceFolder}/out/pic16f13145_spi_to_ws2812_mcc/pro.elf"
     }
   ]

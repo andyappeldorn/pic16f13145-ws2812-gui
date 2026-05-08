@@ -3,25 +3,6 @@
     "importedFrom": "pic16f13145_spi_to_ws2812_mcc.X",
     "configurations": [
         {
-            "name": "free",
-            "id": "conf1",
-            "device": "PIC16F13145",
-            "imageType": "application",
-            "imagePath": "./out/pic16f13145_spi_to_ws2812_mcc/free.elf",
-            "toolProperties": "free-tool",
-            "tool": "nEdbgTool",
-            "packs": [
-                {
-                    "name": "PIC16F1xxxx_DFP",
-                    "vendor": "Microchip",
-                    "version": "1.31.465"
-                }
-            ],
-            "fileSet": "Project files",
-            "toolchain": "free-XC8",
-            "includeLegacyMacros": true
-        },
-        {
             "name": "pro",
             "id": "conf2",
             "device": "PIC16F13145",
@@ -39,37 +20,9 @@
             "fileSet": "Project files",
             "toolchain": "pro-XC8",
             "includeLegacyMacros": true
-        },
-        {
-            "name": "pro",
-            "id": "conf2",
-            "device": "PIC16F13145",
-            "imageType": "application",
-            "imagePath": "./out/pic16f13145_spi_to_ws2812_mcc/pro.elf",
-            "toolProperties": "pro-tool",
-            "packs": [
-                {
-                    "name": "PIC16F1xxxx_DFP",
-                    "vendor": "Microchip",
-                    "version": "1.29.444"
-                }
-            ],
-            "fileSet": "Project files",
-            "toolchain": "pro-XC8",
-            "includeLegacyMacros": true
         }
     ],
     "propertyGroups": [
-        {
-            "name": "free-XC8",
-            "extend": "XC8",
-            "provider": "microchip.toolchains:xc8@3.10",
-            "properties": {
-                "HI-TECH-COMP.disable-optimizations": true,
-                "HI-TECH-COMP.optimization-level": "-O0",
-                "HI-TECH-COMP.optimization-speed": true
-            }
-        },
         {
             "name": "pro-XC8",
             "extend": "XC8",
@@ -78,25 +31,6 @@
                 "HI-TECH-COMP.disable-optimizations": false,
                 "HI-TECH-COMP.optimization-level": "-Os",
                 "HI-TECH-COMP.optimization-speed": false
-            }
-        },
-        {
-            "name": "free-tool",
-            "extend": "tool",
-            "properties": {
-                "poweroptions.powerenable": true,
-                "toolpack.updateoptions": "toolpack.updateoptions.specifictoolpack",
-                "toolpack.updateoptions.packversion": "1.13.715",
-                "voltagevalue": "3.3"
-            }
-        },
-        {
-            "name": "pro-tool",
-            "extend": "tool",
-            "properties": {
-                "poweroptions.powerenable": false,
-                "toolpack.updateoptions": "toolpack.updateoptions.uselatestoolpack",
-                "toolpack.updateoptions.packversion": "Press to select which tool pack to use"
             }
         },
         {
@@ -183,66 +117,6 @@
                 "XC8-config-global.stack-size-main": "auto",
                 "XC8-config-global.stack-type": "compiled",
                 "XC8-config-global.wpo-lto": false
-            }
-        },
-        {
-            "name": "tool",
-            "type": "tool",
-            "properties": {
-                "AutoSelectMemRanges": "auto",
-                "Freeze Peripherals": true,
-                "SecureSegment.SegmentProgramming": "FullChipProgramming",
-                "ToolFirmwareFilePath": "Press to browse for a specific firmware version",
-                "ToolFirmwareOption.UpdateOptions": "ToolFirmwareOption.UseLatest",
-                "ToolFirmwareToolPack": "Press to select which tool pack to use",
-                "communication.activationmode": "nohv",
-                "communication.interface": "${communication.interface.default}",
-                "communication.interface.jtag": "2wire",
-                "communication.speed": "${communication.speed.default}",
-                "debugoptions.debug-startup": "Use system settings",
-                "debugoptions.reset-behaviour": "Use system settings",
-                "debugoptions.simultaneous.debug": false,
-                "debugoptions.useswbreakpoints": false,
-                "event.recorder.debugger.behavior": "Running",
-                "event.recorder.enabled": false,
-                "firmware.path": "Press to browse for a specific firmware version",
-                "firmware.toolpack": "Press to select which tool pack to use",
-                "firmware.update.action": "firmware.update.use.latest",
-                "freeze.timers": false,
-                "memories.aux": false,
-                "memories.bootflash": true,
-                "memories.configurationmemory": true,
-                "memories.configurationmemory2": true,
-                "memories.dataflash": true,
-                "memories.eeprom": true,
-                "memories.exclude.configurationmemory": true,
-                "memories.flashdata": true,
-                "memories.id": true,
-                "memories.instruction.ram.ranges": "${memories.instruction.ram.ranges}",
-                "memories.programmemory": true,
-                "memories.programmemory.ranges": "0-1fff",
-                "programmerToGoFilePath": "C:/Users/m66790/OneDrive - Microchip Technology Inc/Documents/pic16f131/spi-test-1.X/debug/default/spi-test-1_ptg",
-                "programmerToGoImageName": "spi-test-1_ptg",
-                "programoptions.donoteraseauxmem": false,
-                "programoptions.eraseb4program": true,
-                "programoptions.ledbrightness": "5",
-                "programoptions.pgcconfig": "pull down",
-                "programoptions.pgcresistor.value": "4.7",
-                "programoptions.pgdconfig": "pull down",
-                "programoptions.pgdresistor.value": "4.7",
-                "programoptions.pgmentry.voltage": "high",
-                "programoptions.pgmspeed": "Med",
-                "programoptions.preservedataflash": false,
-                "programoptions.preservedataflash.ranges": "${memories.dataflash.default}",
-                "programoptions.preserveeeprom": false,
-                "programoptions.preserveprogramrange": false,
-                "programoptions.preserveuserid": false,
-                "programoptions.program.otpconfig": false,
-                "programoptions.programcalmem": false,
-                "programoptions.programuserotp": false,
-                "programoptions.testmodeentrymethod": "VDDFirst",
-                "ptgProgramImage": true,
-                "ptgSendImage": true
             }
         }
     ],
